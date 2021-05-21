@@ -1,4 +1,4 @@
-pragma solidity ^0.4.17;
+pragma solidity ^0.4.24;
 
 library Roles {
     struct Role {
@@ -50,11 +50,11 @@ contract ApproverRole {
         _;
     }
 
-    function Sign() public {
+    function sign() external {
         require(
             msg.sender == firstSignAddress || msg.sender == secondSignAddress
         );
-        require(signed[msg.sender] == false);
+        require(!signed[msg.sender]);
         signed[msg.sender] = true;
     }
 
@@ -62,33 +62,24 @@ contract ApproverRole {
         return _approvers.has(account);
     }
 
-    function addApprover(address account) public onlyApprover {
-        require(
-            signed[firstSignAddress] == true &&
-                signed[secondSignAddress] == true
-        );
+    function addApprover(address account) external onlyApprover {
+        require(signed[firstSignAddress] && signed[secondSignAddress]);
         _addApprover(account);
 
         signed[firstSignAddress] = false;
         signed[secondSignAddress] = false;
     }
 
-    function removeApprover(address account) public onlyApprover {
-        require(
-            signed[firstSignAddress] == true &&
-                signed[secondSignAddress] == true
-        );
+    function removeApprover(address account) external onlyApprover {
+        require(signed[firstSignAddress] && signed[secondSignAddress]);
         _removeApprover(account);
 
         signed[firstSignAddress] = false;
         signed[secondSignAddress] = false;
     }
 
-    function renounceApprover() public {
-        require(
-            signed[firstSignAddress] == true &&
-                signed[secondSignAddress] == true
-        );
+    function renounceApprover() external {
+        require(signed[firstSignAddress] && signed[secondSignAddress]);
         _removeApprover(msg.sender);
 
         signed[firstSignAddress] = false;
@@ -107,22 +98,22 @@ contract ApproverRole {
 }
 
 library SafeMath {
-    function safeAdd(uint256 a, uint256 b) public pure returns (uint256 c) {
+    function safeAdd(uint256 a, uint256 b) external pure returns (uint256 c) {
         c = a + b;
         require(c >= a);
     }
 
-    function safeSub(uint256 a, uint256 b) public pure returns (uint256 c) {
+    function safeSub(uint256 a, uint256 b) external pure returns (uint256 c) {
         require(b <= a);
         c = a - b;
     }
 
-    function safeMul(uint256 a, uint256 b) public pure returns (uint256 c) {
+    function safeMul(uint256 a, uint256 b) external pure returns (uint256 c) {
         c = a * b;
         require(a == 0 || c / a == b);
     }
 
-    function safeDiv(uint256 a, uint256 b) public pure returns (uint256 c) {
+    function safeDiv(uint256 a, uint256 b) external pure returns (uint256 c) {
         require(b > 0);
         c = a / b;
     }
@@ -206,15 +197,6 @@ contract ReentrancyGuard {
     }
 }
 
-contract ApproveAndCallFallBack {
-    function receiveApproval(
-        address from,
-        uint256 tokens,
-        address token,
-        bytes data
-    ) public;
-}
-
 contract MainContract is ApproverRole, ReentrancyGuard {
     using SafeMath for uint256;
     struct AccountData {
@@ -233,14 +215,14 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     mapping(address => uint256) public approverLockBalances;
 
     uint8 public bnbFeeRate;
-    uint256 public RemainingArgonToken;
+    uint256 public remainingArgonToken;
     uint256 public approverMinArgonLimit;
     address[] public deployedWorks;
     address[] public allPersons;
     address public feeAddress;
-    address public ArgonTokenContractAddress;
+    address public argonTokenContractAddress;
     bool public isActive;
-    IERC20 public ArgonToken; // ArgonToken Contract Address
+    IERC20 public argonToken; // ArgonToken Contract Address
 
     modifier isInAccounts() {
         require(personsAddress[msg.sender]);
@@ -264,15 +246,15 @@ contract MainContract is ApproverRole, ReentrancyGuard {
         uint8 _bnbFeeRate,
         address _feeAddress
     ) public {
-        ArgonToken = IERC20(_argonTokenAddress);
+        argonToken = IERC20(_argonTokenAddress);
         bnbFeeRate = _bnbFeeRate;
-        RemainingArgonToken = 5000000000000000000000000;
+        remainingArgonToken = 5e6 ether;
         approverMinArgonLimit = 20000 * 10**18;
         feeAddress = _feeAddress;
-        ArgonTokenContractAddress = _argonTokenAddress;
+        argonTokenContractAddress = _argonTokenAddress;
     }
 
-    function changeActive(bool _active) public onlyApprover {
+    function changeActive(bool _active) external onlyApprover {
         isActive = _active;
     }
 
@@ -280,7 +262,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
         address _tokenAddress,
         uint8 _feeRate,
         bool _available
-    ) public onlyApprover {
+    ) external onlyApprover {
         feeRates[_tokenAddress] = _feeRate;
         availableTokens[_tokenAddress] = _available;
     }
@@ -289,21 +271,21 @@ contract MainContract is ApproverRole, ReentrancyGuard {
         uint256 _approverMinArgonLimit,
         uint8 _bnbFeeRate,
         address _feeAddress
-    ) public onlyApprover {
+    ) external onlyApprover {
         approverMinArgonLimit = _approverMinArgonLimit;
         bnbFeeRate = _bnbFeeRate;
         feeAddress = _feeAddress;
     }
 
     function sendArgonTokenAdmin(address _address, uint256 amount)
-        public
+        external
         onlyApprover
         nonReentrant
     {
-        ArgonToken.transfer(_address, amount);
+        argonToken.transfer(_address, amount);
     }
 
-    function unLock() public mustApprover nonReentrant {
+    function unLock() external mustApprover nonReentrant {
         require(approverLockBalances[msg.sender] > 0);
         AccountData storage data = accounts[msg.sender];
         require(data.WorkAddresses.length == 0);
@@ -314,16 +296,16 @@ contract MainContract is ApproverRole, ReentrancyGuard {
                 delete allPersons[x];
             }
         }
-        ArgonToken.transfer(msg.sender, approverLockBalances[msg.sender]);
+        argonToken.transfer(msg.sender, approverLockBalances[msg.sender]);
         approverLockBalances[msg.sender] = 0;
     }
 
-    function getAllPersons() public view returns (address[]) {
+    function getAllPersons() external view returns (address[]) {
         return allPersons;
     }
 
     function addPerson(uint8 _accountType, string _personInfoData)
-        public
+        external
         mustActive
         nonReentrant
     {
@@ -331,7 +313,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
             approverLockBalances[msg.sender] = approverLockBalances[msg.sender]
                 .safeAdd(approverMinArgonLimit);
             require(
-                ArgonToken.transferFrom(
+                argonToken.transferFrom(
                     msg.sender,
                     address(this),
                     approverMinArgonLimit
@@ -355,7 +337,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     }
 
     function getPersonInfoData(address _personAddress)
-        public
+        external
         view
         returns (
             uint8,
@@ -385,7 +367,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     }
 
     function updatePerson(string _personInfoData)
-        public
+        external
         isInAccounts
         mustActive
     {
@@ -398,7 +380,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
         string _workCategory,
         string _workDescription,
         string _workAvarageBudget
-    ) public mustActive {
+    ) external mustActive {
         AccountData storage data = accounts[msg.sender];
         require(getPersonAccountType(msg.sender) == 2);
         address newWork =
@@ -414,11 +396,11 @@ contract MainContract is ApproverRole, ReentrancyGuard {
         deployedWorks.push(newWork); // Adding All Works
     }
 
-    function getWorks() public view returns (address[]) {
+    function getWorks() external view returns (address[]) {
         return deployedWorks;
     }
 
-    function setPuan(uint256 _puan, address _freelancerAddress) public {
+    function setPuan(uint256 _puan, address _freelancerAddress) external {
         for (uint256 i = 0; i < deployedWorks.length; i++) {
             if (msg.sender == deployedWorks[i]) {
                 AccountData storage data = accounts[_freelancerAddress];
@@ -430,7 +412,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     function setApproverWorkAddress(
         address _workAddress,
         address _approveraddress
-    ) public {
+    ) external {
         for (uint256 i = 0; i < deployedWorks.length; i++) {
             if (msg.sender == deployedWorks[i]) {
                 AccountData storage data = accounts[_approveraddress];
@@ -457,7 +439,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     function deleteApproverWorkAddress(
         address _workAddress,
         address _approveraddress
-    ) public {
+    ) external {
         for (uint256 y = 0; y < deployedWorks.length; y++) {
             if (msg.sender == deployedWorks[y]) {
                 AccountData storage data = accounts[_approveraddress];
@@ -471,7 +453,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     }
 
     function checkDeadline(address _workAddress)
-        public
+        external
         view
         returns (bool, address)
     {
@@ -484,14 +466,17 @@ contract MainContract is ApproverRole, ReentrancyGuard {
         }
     }
 
-    function sendApproverArgonCoin(address _approveraddress) public {
+    function sendApproverArgonCoin(address _approveraddress) external {
+        bool send = false;
         for (uint256 i = 0; i < deployedWorks.length; i++) {
             if (msg.sender == deployedWorks[i]) {
-                uint256 amount =
-                    (RemainingArgonToken.safeMul(3)).safeDiv(1000000);
-                ArgonToken.transfer(_approveraddress, amount);
-                RemainingArgonToken = RemainingArgonToken.safeSub(amount);
+                send = true;
             }
+        }
+        if (send) {
+            uint256 amount = (remainingArgonToken.safeMul(3)).safeDiv(1e6);
+            argonToken.transfer(_approveraddress, amount);
+            remainingArgonToken = remainingArgonToken.safeSub(amount);
         }
     }
 }
@@ -532,7 +517,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
 
     bool public workStatus;
     bool public isBNB;
-    bool public ArgonShield;
+    bool public argonShield;
     bool public freelancerSendFiles;
     bool public employerReceiveFiles;
 
@@ -542,7 +527,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
     address public freelancerAddress;
     address[] public allFreelancerAddress;
 
-    IERC20 public ArgonToken; // ***ArgonToken Contract***
+    IERC20 public argonToken; // ***ArgonToken Contract***
     mapping(address => Offer) offers;
 
     modifier mustActive() {
@@ -552,7 +537,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
 
     modifier requireForApprover() {
         require(approverConfirmStatus == 0 && approverStartDate > 0);
-        require(ArgonShield);
+        require(argonShield);
         _;
     }
 
@@ -577,10 +562,10 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         freelancerSendFiles = false;
         employerReceiveFiles = false;
         deployedFromContract = MainContract(_t);
-        ArgonToken = IERC20(MainContract(_t).ArgonTokenContractAddress());
+        argonToken = IERC20(MainContract(_t).argonTokenContractAddress());
     }
 
-    function getAllFreelancers() public view returns (address[]) {
+    function getAllFreelancers() external view returns (address[]) {
         return allFreelancerAddress;
     }
 
@@ -590,7 +575,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         string _workDescription,
         string _workAvarageBudget,
         address _workaddress
-    ) public mustActive {
+    ) external mustActive {
         require(this == _workaddress);
         require(msg.sender == employerAddress);
         workTitle = _workTitle;
@@ -607,7 +592,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         address _tokenContract,
         bool _isBNB,
         bool _ArgonShield
-    ) public mustActive {
+    ) external mustActive {
         require(deployedFromContract.getPersonAccountType(msg.sender) == 0);
         if (!_isBNB) {
             require(_tokenContract != address(0));
@@ -629,7 +614,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         workOfferCount++;
     }
 
-    function deleteOffer() public mustActive {
+    function deleteOffer() external mustActive {
         delete offers[msg.sender];
         workOfferCount--;
     }
@@ -639,7 +624,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         string _description,
         string _title,
         bool _ArgonShield
-    ) public mustActive {
+    ) external mustActive {
         Offer storage data = offers[msg.sender];
         data.offerPrice = _offerPrice;
         data.description = _description;
@@ -648,7 +633,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
     }
 
     function getOfferData(address _freelancerAddress)
-        public
+        external
         view
         returns (
             uint256,
@@ -675,7 +660,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
     }
 
     function selectOffer(address _freelancerAddress, address _approveraddress)
-        public
+        external
         payable
         mustActive
     {
@@ -698,13 +683,13 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         deadLine = data.deadline;
         workPrice = data.offerPrice;
         isBNB = true;
-        ArgonShield = data.ArgonShield;
+        argonShield = data.ArgonShield;
     }
 
     function selectOfferWithToken(
         address _freelancerAddress,
         address _approveraddress
-    ) public mustActive {
+    ) external mustActive {
         require(msg.sender == employerAddress);
         Offer storage data = offers[_freelancerAddress];
         require(!data.tokenContractIsBNB);
@@ -731,10 +716,10 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
                 data.offerPrice
             )
         );
-        ArgonShield = data.ArgonShield;
+        argonShield = data.ArgonShield;
     }
 
-    function freelancerSendFile(string _workFilesLink) public {
+    function freelancerSendFile(string _workFilesLink) external {
         require(msg.sender == freelancerAddress);
         require(!freelancerSendFiles);
         freelancerSendFiles = true;
@@ -782,7 +767,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
     }
 
     function employerReceiveFile(uint256 _puan, string _remark)
-        public
+        external
         nonReentrant
     {
         require(msg.sender == employerAddress);
@@ -795,9 +780,9 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         workEndDate = now;
     }
 
-    function employerCancel(string _depscription) public {
+    function employerCancel(string _depscription) external {
         require(msg.sender == employerAddress);
-        require(ArgonShield);
+        require(argonShield);
         require(approverStartDate == 0);
         require(!employerReceiveFiles);
         require(freelancerSendFiles, "freelancer must be sent files");
@@ -808,7 +793,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
     }
 
     function confirmApprover(string _description)
-        public
+        external
         nonReentrant
         requireForApprover
     {
@@ -832,7 +817,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
     }
 
     function cancelApprover(string _description)
-        public
+        external
         nonReentrant
         requireForApprover
     {
@@ -851,7 +836,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         _payEmployer();
     }
 
-    function autoConfirm() public nonReentrant {
+    function autoConfirm() external nonReentrant {
         require(now > freelancerSendFilesDate.safeAdd(5 days));
         require(!employerReceiveFiles);
         require(freelancerSendFiles);
@@ -861,7 +846,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         workEndDate = now;
     }
 
-    function sendDeadline() public nonReentrant {
+    function sendDeadline() external nonReentrant {
         require(now > deadLine);
         require(!freelancerSendFiles);
         _payEmployer();
