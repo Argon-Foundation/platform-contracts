@@ -213,6 +213,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     mapping(address => uint8) public feeRates;
     mapping(address => bool) public availableTokens;
     mapping(address => uint256) public approverLockBalances;
+    mapping(address => bool) public isDeployedWorks;
 
     uint8 public bnbFeeRate;
     uint256 public remainingArgonToken;
@@ -394,6 +395,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
             );
         data.WorkAddresses.push(newWork); // Adding Person Works
         deployedWorks.push(newWork); // Adding All Works
+        isDeployedWorks[newWork] = true;
     }
 
     function getWorks() external view returns (address[]) {
@@ -401,24 +403,19 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     }
 
     function setPuan(uint256 _puan, address _freelancerAddress) external {
-        for (uint256 i = 0; i < deployedWorks.length; i++) {
-            if (msg.sender == deployedWorks[i]) {
-                AccountData storage data = accounts[_freelancerAddress];
-                data.personPuan.push(_puan);
-            }
-        }
+        require(isDeployedWorks[msg.sender]);
+        AccountData storage data = accounts[_freelancerAddress];
+        data.personPuan.push(_puan);
     }
 
     function setApproverWorkAddress(
         address _workAddress,
         address _approveraddress
     ) external {
-        for (uint256 i = 0; i < deployedWorks.length; i++) {
-            if (msg.sender == deployedWorks[i]) {
-                AccountData storage data = accounts[_approveraddress];
-                data.WorkAddresses.push(_workAddress);
-            }
-        }
+        require(isDeployedWorks[msg.sender]);
+
+        AccountData storage data = accounts[_approveraddress];
+        data.WorkAddresses.push(_workAddress);
     }
 
     function _removeApproverWorkAddressArray(
@@ -440,14 +437,12 @@ contract MainContract is ApproverRole, ReentrancyGuard {
         address _workAddress,
         address _approveraddress
     ) external {
-        for (uint256 y = 0; y < deployedWorks.length; y++) {
-            if (msg.sender == deployedWorks[y]) {
-                AccountData storage data = accounts[_approveraddress];
-                for (uint256 i = 0; i < data.WorkAddresses.length; i++) {
-                    if (data.WorkAddresses[i] == _workAddress) {
-                        _removeApproverWorkAddressArray(i, _approveraddress);
-                    }
-                }
+        require(isDeployedWorks[msg.sender]);
+
+        AccountData storage data = accounts[_approveraddress];
+        for (uint256 i = 0; i < data.WorkAddresses.length; i++) {
+            if (data.WorkAddresses[i] == _workAddress) {
+                _removeApproverWorkAddressArray(i, _approveraddress);
             }
         }
     }
@@ -467,17 +462,11 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     }
 
     function sendApproverArgonCoin(address _approveraddress) external {
-        bool send = false;
-        for (uint256 i = 0; i < deployedWorks.length; i++) {
-            if (msg.sender == deployedWorks[i]) {
-                send = true;
-            }
-        }
-        if (send) {
-            uint256 amount = (remainingArgonToken.safeMul(3)).safeDiv(1e6);
-            argonToken.transfer(_approveraddress, amount);
-            remainingArgonToken = remainingArgonToken.safeSub(amount);
-        }
+        require(isDeployedWorks[msg.sender]);
+
+        uint256 amount = (remainingArgonToken.safeMul(3)).safeDiv(1e5);
+        argonToken.transfer(_approveraddress, amount);
+        remainingArgonToken = remainingArgonToken.safeSub(amount);
     }
 }
 
@@ -733,7 +722,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         if (isBNB) {
             amount = workPrice.safeSub(
                 (workPrice.safeMul(deployedFromContract.bnbFeeRate())).safeDiv(
-                    100
+                    1e6
                 )
             );
             freelancerAddress.transfer(amount);
@@ -747,7 +736,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
                         deployedFromContract.feeRates(tokenContractAddress)
                     )
                 )
-                    .safeDiv(100)
+                    .safeDiv(1e6)
             );
 
             IERC20(tokenContractAddress).transfer(freelancerAddress, amount);
