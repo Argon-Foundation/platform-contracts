@@ -554,6 +554,28 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         argonToken = IERC20(MainContract(_t).argonTokenContractAddress());
     }
 
+    function getWorkData()
+        external
+        view
+        returns (
+            string,
+            string,
+            uint256,
+            string,
+            uint256,
+            bool
+        )
+    {
+        return (
+            workTitle,
+            workDescription,
+            workCreateTime,
+            workAvarageBudget,
+            workOfferCount,
+            workStatus
+        );
+    }
+
     function getAllFreelancers() external view returns (address[]) {
         return allFreelancerAddress;
     }
