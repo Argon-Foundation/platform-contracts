@@ -210,12 +210,12 @@ contract MainContract is ApproverRole, ReentrancyGuard {
 
     mapping(address => AccountData) accounts;
     mapping(address => bool) personsAddress;
-    mapping(address => uint8) public feeRates;
+    mapping(address => uint256) public feeRates;
     mapping(address => bool) public availableTokens;
     mapping(address => uint256) public approverLockBalances;
     mapping(address => bool) public isDeployedWorks;
 
-    uint8 public bnbFeeRate;
+    uint256 public bnbFeeRate;
     uint256 public remainingArgonToken;
     uint256 public approverMinArgonLimit;
     address[] public deployedWorks;
@@ -244,7 +244,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
 
     constructor(
         address _argonTokenAddress,
-        uint8 _bnbFeeRate,
+        uint256 _bnbFeeRate,
         address _feeAddress
     ) public {
         argonToken = IERC20(_argonTokenAddress);
@@ -261,7 +261,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
 
     function changeAvailableTokenFee(
         address _tokenAddress,
-        uint8 _feeRate,
+        uint256 _feeRate,
         bool _available
     ) external onlyApprover {
         feeRates[_tokenAddress] = _feeRate;
@@ -270,7 +270,7 @@ contract MainContract is ApproverRole, ReentrancyGuard {
 
     function changeSettings(
         uint256 _approverMinArgonLimit,
-        uint8 _bnbFeeRate,
+        uint256 _bnbFeeRate,
         address _feeAddress
     ) external onlyApprover {
         approverMinArgonLimit = _approverMinArgonLimit;
