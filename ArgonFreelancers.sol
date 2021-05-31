@@ -41,8 +41,8 @@ contract ApproverRole {
     constructor() internal {
         _addApprover(msg.sender);
 
-        firstSignAddress = 0xBdCf81639242C471f79f985D66BE8A289bD78428; // You should change this address to your first sign address
-        secondSignAddress = 0xFb46431618d4769F2b14178C19402eca7fbb2b5f; // You should change this address to your second sign address
+        firstSignAddress = 0x6f5AbAa7692Ee4bE69c84E4465D282204859bc04; // You should change this address to your first sign address
+        secondSignAddress = 0xDD45BaE748b8Ca386b43301aC353AF02a950a74d; // You should change this address to your second sign address
     }
 
     modifier onlyApprover() {
@@ -418,6 +418,16 @@ contract MainContract is ApproverRole, ReentrancyGuard {
         data.WorkAddresses.push(_workAddress);
     }
 
+    function setFreelancerWorkAddress(
+        address _workAddress,
+        address _freelanceraddress
+    ) external {
+        require(isDeployedWorks[msg.sender]);
+
+        AccountData storage data = accounts[_freelanceraddress];
+        data.WorkAddresses.push(_workAddress);
+    }
+
     function _removeApproverWorkAddressArray(
         uint256 index,
         address _approveraddress
@@ -678,6 +688,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         require(msg.sender == employerAddress);
         Offer storage data = offers[_freelancerAddress];
         require(data.tokenContractIsBNB);
+        deployedFromContract.setFreelancerWorkAddress(this, _freelancerAddress);
         if (data.ArgonShield) {
             require(
                 deployedFromContract.approverLockBalances(_approveraddress) >=
@@ -704,6 +715,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
         require(msg.sender == employerAddress);
         Offer storage data = offers[_freelancerAddress];
         require(!data.tokenContractIsBNB);
+        deployedFromContract.setFreelancerWorkAddress(this, _freelancerAddress);
         if (data.ArgonShield) {
             require(
                 deployedFromContract.approverLockBalances(_approveraddress) >=
