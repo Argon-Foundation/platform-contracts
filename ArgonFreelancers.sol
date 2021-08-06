@@ -1,3 +1,12 @@
+/*
+   ___                    
+  / _ | _______ ____  ___ 
+ / __ |/ __/ _ `/ _ \/ _ \
+/_/ |_/_/  \_, /\___/_//_/
+          /___/        
+             
+*/
+
 pragma solidity ^0.4.24;
 
 library Roles {
@@ -322,15 +331,14 @@ contract MainContract is ApproverRole, ReentrancyGuard {
             );
         }
         require(!personsAddress[msg.sender]);
-        AccountData memory newAccount =
-            AccountData({
-                accountType: _accountType,
-                personWalletAddress: msg.sender,
-                personWorkCount: 0,
-                personPuan: new uint256[](0),
-                WorkAddresses: new address[](0),
-                personInfoData: _personInfoData
-            });
+        AccountData memory newAccount = AccountData({
+            accountType: _accountType,
+            personWalletAddress: msg.sender,
+            personWorkCount: 0,
+            personPuan: new uint256[](0),
+            WorkAddresses: new address[](0),
+            personInfoData: _personInfoData
+        });
 
         accounts[msg.sender] = newAccount; // Adding a new account
         allPersons.push(msg.sender); // Adding a new account
@@ -384,15 +392,14 @@ contract MainContract is ApproverRole, ReentrancyGuard {
     ) external mustActive {
         AccountData storage data = accounts[msg.sender];
         require(getPersonAccountType(msg.sender) == 2);
-        address newWork =
-            new WorkContract(
-                _workTitle,
-                _workCategory,
-                _workDescription,
-                _workAvarageBudget,
-                msg.sender,
-                this
-            );
+        address newWork = new WorkContract(
+            _workTitle,
+            _workCategory,
+            _workDescription,
+            _workAvarageBudget,
+            msg.sender,
+            this
+        );
         data.WorkAddresses.push(newWork); // Adding Person Works
         deployedWorks.push(newWork); // Adding All Works
         isDeployedWorks[newWork] = true;
@@ -619,17 +626,16 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
             require(_tokenContract != address(0));
             require(deployedFromContract.availableTokens(_tokenContract));
         }
-        Offer memory newOffer =
-            Offer({
-                offerPrice: _offerPrice,
-                freelancerAddress: msg.sender,
-                description: _description,
-                deadline: _deadline,
-                title: _title,
-                offerTokenContract: _tokenContract,
-                tokenContractIsBNB: _isBNB,
-                ArgonShield: _ArgonShield
-            });
+        Offer memory newOffer = Offer({
+            offerPrice: _offerPrice,
+            freelancerAddress: msg.sender,
+            description: _description,
+            deadline: _deadline,
+            title: _title,
+            offerTokenContract: _tokenContract,
+            tokenContractIsBNB: _isBNB,
+            ArgonShield: _ArgonShield
+        });
         offers[msg.sender] = newOffer;
         allFreelancerAddress.push(msg.sender);
         workOfferCount++;
@@ -769,8 +775,7 @@ contract WorkContract is ApproverRole, ReentrancyGuard {
                     workPrice.safeMul(
                         deployedFromContract.feeRates(tokenContractAddress)
                     )
-                )
-                    .safeDiv(1e6)
+                ).safeDiv(1e6)
             );
 
             IERC20(tokenContractAddress).transfer(freelancerAddress, amount);
